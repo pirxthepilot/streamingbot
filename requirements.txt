@@ -1,0 +1,2 @@
+requests~=2.23.0
+twitch-python~=0.0.18
