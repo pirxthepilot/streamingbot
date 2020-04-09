@@ -1,7 +1,10 @@
 import os
 import json
+
+import arrow
 import requests
 import twitch
+
 
 TWITCH_USER = os.environ.get('TWITCH_USER')
 TWITCH_CLIENT_ID = os.environ.get('TWITCH_CLIENT_ID')
@@ -24,7 +27,8 @@ stream = user.stream
 slack = requests.Session()
 headers = {'Content-Type': 'application/json'}
 
-title = f"*{user.login}* just started a live stream!"
+time_ago = arrow.get(stream.started_at).humanize()
+title = f"*{user.login}* started a live stream {time_ago}!"
 text = (
     f"*<https://twitch.tv/{user.login}|{user.display_name} - Twitch>*\n"
     f"{stream.title}"
