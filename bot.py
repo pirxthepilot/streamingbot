@@ -23,6 +23,9 @@ tw = twitch.Helix(TWITCH_CLIENT_ID)
 
 user = tw.user(TWITCH_USER)
 stream = user.stream
+print(stream.id)
+print(stream.user_id)
+print(user.id)
 
 slack = requests.Session()
 headers = {'Content-Type': 'application/json'}
@@ -62,16 +65,16 @@ msg = {
         # {
         #     "type": "divider"
         # },
-        {
-            "type": "image",
-            "title": {
-                "type": "plain_text",
-                "text": "Screenshot",
-                "emoji": True
-            },
-            "image_url": stream_thumbnail_url,
-            "alt_text": stream.title
-        },
+        # {
+        #     "type": "image",
+        #     "title": {
+        #         "type": "plain_text",
+        #         "text": "Screenshot",
+        #         "emoji": True
+        #     },
+        #     "image_url": stream_thumbnail_url,
+        #     "alt_text": stream.title
+        # },
         {
             "type": "divider"
         }
