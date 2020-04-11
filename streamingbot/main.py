@@ -21,6 +21,8 @@ class StreamingBot:
         self.sl = SlackHandler(slack_webhook_url)  # Slack session
         self.db = DynamoDBHandler(DB_NAME)         # DynamoDB session
         self.users: Optional[List[User]] = []      # Twitch users to watch
+        self.streams: Optional[List[Stream]] = []  # List of current streams
+        self.saved: Optional[List[dict]] = []      # Saved items in the DB
 
     def set_users_to_watch(self, users: List[User]) -> None:
         """ Populate self.users """
@@ -50,13 +52,10 @@ class StreamingBot:
 
         print(f"{len(self.users)} in my list")
 
-        streams = []        # Collect streams for DB cleanup later
-        db_snapshot = None  # We'll scan the table if needed
-
         for user in self.users:
             try:
                 stream = user.stream
-                streams.append(stream)
+                self.streams.append(stream)
                 print(f"[{user.login}] is live!")
             except StreamNotFound:
                 print(f"[{user.login}] is not streaming")
@@ -64,8 +63,11 @@ class StreamingBot:
 
             # Process the streamer
             try:
-                # Get all entries in the DB
-                # db_snapshot = self.db.scan()
+                # Get all items in the DB
+                # Note: It's important that we fetch this BEFORE we
+                #       add items to the DB
+                if not self.saved:
+                    self.saved = self.db.scan()
 
                 # First check if stream is already in DB
                 if self._exists_in_db(stream.id):
@@ -90,9 +92,28 @@ class StreamingBot:
                 print(f"DYNAMODB ERROR: {e}")
                 continue
 
+        # DB cleanup (TBD)
+        print('Cleaning up DB items where applicable...')
+        for stream in self.saved:
+            #print(f"Is {stream['stream_id']} in {[i.id for i in self.streams]}")
+            if not self._exists_in_streams(stream['stream_id']):
+                print(f"{stream['user_login']} no longer streams "
+                      "{stream['stream_id']}")
+                try:
+                    self._remove_from_db(stream['stream_id'])
+                    print(f"Stream {stream['stream_id']} removed from DB")
+                except ClientError as e:
+                    print(f"DynamoDB error removing from DB: {e}")
+                    continue
+        print('All done!')
+
     def _exists_in_db(self, stream_id: int) -> bool:
         """ Check if stream exists in DB """
-        return bool(self.db.get_item('stream_id', int(stream_id)))
+        return int(stream_id) in [item['stream_id'] for item in self.saved]
+
+    def _exists_in_streams(self, stream_id: int) -> bool:
+        """ Check if stream exists in current streams """
+        return int(stream_id) in [int(stream.id) for stream in self.streams]
 
     def _save_to_db(self, user: User, stream: Stream) -> None:
         """ Save stream to DB """
