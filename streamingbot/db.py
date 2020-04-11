@@ -9,9 +9,9 @@ from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 
 
-class DynamoDB:
+class DynamoDBHandler:
     """ DynamoDB handler """
-    def __init__(self, table_name: str) -> str:
+    def __init__(self, table_name: str) -> None:
         self.table = resource('dynamodb').Table(table_name)
 
     def get_item(self, attr_name: Any, attr_value: Any) -> Optional[dict]:
