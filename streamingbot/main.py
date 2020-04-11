@@ -4,6 +4,8 @@ from botocore.exceptions import ClientError
 
 import twitch
 from twitch.helix.models.user import User
+from twitch.helix.models.stream import Stream
+from twitch.helix import StreamNotFound
 
 from streamingbot.db import DynamoDBHandler
 from streamingbot.slack import SlackHandler
@@ -48,33 +50,38 @@ class StreamingBot:
 
         print(f"{len(self.users)} in my list")
 
-        # Get a list of live streamers
-        streamers = []
-        for user in self.users:
-            if user.is_live:
-                print(f"{user.login} is live!")
-                streamers.append(user)
-            else:
-                print(f"{user.login} is not streaming")
+        streams = []        # Collect streams for DB cleanup later
+        db_snapshot = None  # We'll scan the table if needed
 
-        # Process the streamers
-        for user in streamers:
+        for user in self.users:
             try:
+                stream = user.stream
+                streams.append(stream)
+                print(f"[{user.login}] is live!")
+            except StreamNotFound:
+                print(f"[{user.login}] is not streaming")
+                continue
+
+            # Process the streamer
+            try:
+                # Get all entries in the DB
+                # db_snapshot = self.db.scan()
+
                 # First check if stream is already in DB
-                if self._exists_in_db(user.stream.id):
+                if self._exists_in_db(stream.id):
                     print(
                         f"I am already aware of {user.login}'s stream "
-                        f"(ID: {user.stream.id}) - skipping Slack messaging"
+                        f"(ID: {stream.id}) - skipping Slack messaging"
                     )
                     continue
 
                 # Save to DB
-                print(f"{user.login}'s stream (ID: {user.stream.id}) is new!")
-                self._save_to_db(user)
-                print(f"Stream {user.stream.id} saved to DB")
+                print(f"{user.login}'s stream (ID: {stream.id}) is new!")
+                self._save_to_db(user, stream)
+                print(f"Stream {stream.id} saved to DB")
 
                 # Send to Slack
-                resp = self.sl.send_message(user)
+                resp = self.sl.send_message(user, stream)
                 print(
                     f"Sent message to Slack for {user.login} with result: "
                     f"{resp.status_code} {resp.text}"
@@ -87,12 +94,12 @@ class StreamingBot:
         """ Check if stream exists in DB """
         return bool(self.db.get_item('stream_id', int(stream_id)))
 
-    def _save_to_db(self, user: User) -> None:
+    def _save_to_db(self, user: User, stream: Stream) -> None:
         """ Save stream to DB """
         self.db.put_item(**{
-            'stream_id': int(user.stream.id),
+            'stream_id': int(stream.id),
             'user_login': user.login,
-            'started_at': user.stream.started_at,
+            'started_at': stream.started_at,
         })
 
     def _remove_from_db(self, stream_id: int) -> None:

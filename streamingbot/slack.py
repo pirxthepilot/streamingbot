@@ -3,7 +3,7 @@ import arrow
 import requests
 from requests.models import Response
 from twitch.helix.models.user import User
-# from twitch.helix.models.stream import Stream
+from twitch.helix.models.stream import Stream
 
 
 class SlackHandler:
@@ -12,10 +12,8 @@ class SlackHandler:
         self.webhook_url = webhook_url
         self.session = requests.Session()
 
-    def send_message(self, user: User) -> Response:
+    def send_message(self, user: User, stream: Stream) -> Response:
         """ Post to Slack """
-        stream = user.stream
-
         headers = {'Content-Type': 'application/json'}
 
         time_ago = arrow.get(stream.started_at).humanize()
