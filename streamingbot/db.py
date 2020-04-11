@@ -32,3 +32,8 @@ class DynamoDBHandler:
             Key={attr_name: attr_value}
         )
 
+    def scan(self) -> Optional[dict]:
+        """ Return all rows in the table """
+        resp = self.table.scan()
+        return json.loads(json.dumps(resp.get('Items')))
+
