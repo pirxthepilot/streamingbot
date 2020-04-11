@@ -1,9 +1,15 @@
 from typing import List, Optional
 
+from botocore.exceptions import ClientError
+
 import twitch
 from twitch.helix.models.user import User
 
+from streamingbot.db import DynamoDBHandler
 from streamingbot.slack import SlackHandler
+
+
+DB_NAME = 'streamingbotdb'
 
 
 class StreamingBot:
@@ -11,6 +17,7 @@ class StreamingBot:
     def __init__(self, twitch_client_id: str, slack_webhook_url: str) -> None:
         self.tw = twitch.Helix(twitch_client_id)   # Twitch session
         self.sl = SlackHandler(slack_webhook_url)  # Slack session
+        self.db = DynamoDBHandler(DB_NAME)         # DynamoDB session
         self.users: Optional[List[User]] = []      # Twitch users to watch
 
     def set_users_to_watch(self, users: List[User]) -> None:
@@ -51,10 +58,44 @@ class StreamingBot:
                 print(f"{user.login} is not streaming")
 
         # Process the streamers
-        for streamer in streamers:
-            resp = self.sl.send_message(streamer)
-            print(
-                f"Sent message to Slack for {streamer.login} with result: "
-                f"{resp.status_code} {resp.text}"
-            )
+        for user in streamers:
+            try:
+                # First check if stream is already in DB
+                if self._exists_in_db(user.stream.id):
+                    print(
+                        f"I am already aware of {user.login}'s stream "
+                        f"(ID: {user.stream.id}) - skipping Slack messaging"
+                    )
+                    continue
+
+                # Save to DB
+                print(f"{user.login}'s stream (ID: {user.stream.id}) is new!")
+                self._save_to_db(user)
+                print(f"Stream {user.stream.id} saved to DB")
+
+                # Send to Slack
+                resp = self.sl.send_message(user)
+                print(
+                    f"Sent message to Slack for {user.login} with result: "
+                    f"{resp.status_code} {resp.text}"
+                )
+            except ClientError as e:
+                print(f"DYNAMODB ERROR: {e}")
+                continue
+
+    def _exists_in_db(self, stream_id: int) -> bool:
+        """ Check if stream exists in DB """
+        return bool(self.db.get_item('stream_id', int(stream_id)))
+
+    def _save_to_db(self, user: User) -> None:
+        """ Save stream to DB """
+        self.db.put_item(**{
+            'stream_id': int(user.stream.id),
+            'user_login': user.login,
+            'started_at': user.stream.started_at,
+        })
+
+    def _remove_from_db(self, stream_id: int) -> None:
+        """ Remove stream from DB """
+        self.db.delete_item('stream_id', int(stream_id))
 
