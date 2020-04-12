@@ -98,7 +98,7 @@ class StreamingBot:
             #print(f"Is {stream['stream_id']} in {[i.id for i in self.streams]}")
             if not self._exists_in_streams(stream['stream_id']):
                 print(f"{stream['user_login']} no longer streams "
-                      "{stream['stream_id']}")
+                      f"{stream['stream_id']}")
                 try:
                     self._remove_from_db(stream['stream_id'])
                     print(f"Stream {stream['stream_id']} removed from DB")
