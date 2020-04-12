@@ -20,9 +20,9 @@ class StreamingBot:
         self.tw = twitch.Helix(twitch_client_id)   # Twitch session
         self.sl = SlackHandler(slack_webhook_url)  # Slack session
         self.db = DynamoDBHandler(DB_NAME)         # DynamoDB session
-        self.users: Optional[List[User]] = []      # Twitch users to watch
-        self.streams: Optional[List[Stream]] = []  # List of current streams
-        self.saved: Optional[List[dict]] = []      # Saved items in the DB
+        self.users: List[User] = []                # Twitch users to watch
+        self.streams: List[Stream] = []            # List of current streams
+        self.saved: List[dict] = []                # Saved items in the DB
 
     def set_users_to_watch(self, users: List[User]) -> None:
         """ Populate self.users """

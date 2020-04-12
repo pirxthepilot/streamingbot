@@ -25,7 +25,7 @@ module "streamingbot_lambda" {
   name        = "streamingbot"
   description = "Twitch stream notifier for Slack"
 
-  filename = "../package.zip"
+  filename = var.lambda_package
   handler  = "bot.lambda_handler"
   runtime  = "python3.7"
   timeout  = 45

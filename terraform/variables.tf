@@ -16,3 +16,8 @@ variable "twitch_user" {
   type        = string
   description = "Twitch user to watch - set in a .tfvars file"
 }
+
+variable "lambda_package" {
+  type        = string
+  description = "Path to the zipped lambda package file"
+}
