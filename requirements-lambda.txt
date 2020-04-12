@@ -1,0 +1,4 @@
+arrow
+requests~=2.23.0
+simplejson
+git+https://github.com/pirxthepilot/Twitch-Python.git@fix_follow_type

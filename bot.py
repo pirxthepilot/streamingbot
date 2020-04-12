@@ -13,7 +13,7 @@ def main():
     bot.run()
 
 
-def lambda_handler():
+def lambda_handler(event, context):  #pylint: disable=unused-argument
     main()
 
 

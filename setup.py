@@ -11,7 +11,7 @@ setup(
     packages=find_packages(exclude=('tests',)),
     install_requires=[
         'arrow',
-        'boto3~=1.12.38',
+        #'boto3~=1.12.38',
         'requests~=2.23.0',
         'simplejson',
         'twitch-python~=0.0.18',
