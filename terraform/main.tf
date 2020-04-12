@@ -28,7 +28,7 @@ module "streamingbot_lambda" {
   filename = var.lambda_package
   handler  = "bot.lambda_handler"
   runtime  = "python3.7"
-  timeout  = 45
+  timeout  = 30
 
   envvars = {
     TWITCH_CLIENT_ID  = var.twitch_client_id
@@ -48,7 +48,8 @@ module "streamingbot_lambda" {
         "dynamodb:Scan",
         "dynamodb:BatchWriteItem",
         "dynamodb:PutItem",
-        "dynamodb:UpdateItem"
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem"
       ],
       "Resource": "${aws_dynamodb_table.streamingbot.arn}",
       "Effect": "Allow"
@@ -70,5 +71,5 @@ module "lambda_schedule" {
   is_enabled  = true
 
   lambda_function_arn = module.streamingbot_lambda.lambda_function_arn
-  schedule_expression = "rate(5 minutes)"
+  schedule_expression = "rate(${var.run_frequency} minutes)"
 }

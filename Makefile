@@ -20,8 +20,16 @@ test-all: typecheck lint
 package:
 	@./support/package.sh
 
+.PHONY: plan
+plan:
+	cd terraform &&\
+	terraform plan -var-file=config.tfvars -var 'lambda_package=$(ZIP_FILE)'
+
 .PHONY: deploy
 deploy:
 	cd terraform &&\
-	terraform apply -var-file=config.tfvars -var 'lambda_package=$(ZIP_FILE)'
+	terraform apply -var-file=config.tfvars -var 'lambda_package=$(ZIP_FILE)' -auto-approve
 
+.PHONY: logtail
+logtail:
+	awslogs get /aws/lambda/streamingbot --timestamp --watch
