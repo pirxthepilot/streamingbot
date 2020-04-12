@@ -52,6 +52,10 @@ class StreamingBot:
 
         print(f"{len(self.users)} users in my list")
 
+        # Get a snapshot of items in DB before we begin
+        self.saved = self.db.scan()
+
+        # Begin!
         for user in self.users:
             try:
                 stream = user.stream
@@ -63,12 +67,6 @@ class StreamingBot:
 
             # Process the streamer
             try:
-                # Get all items in the DB
-                # Note: It's important that we fetch this BEFORE we
-                #       add items to the DB
-                if not self.saved:
-                    self.saved = self.db.scan()
-
                 # First check if stream is already in DB
                 if self._exists_in_db(stream.id):
                     print(
