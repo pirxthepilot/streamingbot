@@ -71,5 +71,5 @@ module "lambda_schedule" {
   is_enabled  = true
 
   lambda_function_arn = module.streamingbot_lambda.lambda_function_arn
-  schedule_expression = "rate(${var.run_frequency} minutes)"
+  schedule_expression = "cron(1/${var.run_frequency} * * * ? *)"
 }
