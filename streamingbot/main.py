@@ -50,7 +50,7 @@ class StreamingBot:
             print('No users in my list! Exiting.')
             return
 
-        print(f"{len(self.users)} in my list")
+        print(f"{len(self.users)} users in my list")
 
         for user in self.users:
             try:

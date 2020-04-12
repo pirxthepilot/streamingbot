@@ -1,0 +1,5 @@
+# Config params - DO NOT COMMIT TO GIT!
+
+twitch_client_id  = "foo"
+slack_webhook_url = "bar"
+twitch_user       = "baz"
