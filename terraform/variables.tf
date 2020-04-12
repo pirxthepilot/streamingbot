@@ -21,3 +21,9 @@ variable "lambda_package" {
   type        = string
   description = "Path to the zipped lambda package file"
 }
+
+variable "run_frequency" {
+  type        = number
+  default     = 5
+  description = "How often the function runs, in minutes"
+}

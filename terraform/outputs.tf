@@ -1,5 +1,5 @@
-output dynamodb_table_id {
-  value = aws_dynamodb_table.streamingbot.id
+output lambda_function_arn {
+  value = module.streamingbot_lambda.lambda_function_arn
 }
 
 output dynamodb_table_arn {

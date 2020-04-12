@@ -3,3 +3,4 @@
 twitch_client_id  = "foo"
 slack_webhook_url = "bar"
 twitch_user       = "baz"
+run_frequency     = 4
