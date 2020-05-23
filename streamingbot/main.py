@@ -2,12 +2,14 @@ from typing import List, Optional
 
 from botocore.exceptions import ClientError
 
+import requests
 import twitch
 from twitch.helix.models.user import User
 from twitch.helix.models.stream import Stream
 from twitch.helix import StreamNotFound
 
 from streamingbot.db import DynamoDBHandler
+from streamingbot.exceptions import StreamingBotException
 from streamingbot.slack import SlackHandler
 
 
@@ -16,13 +18,44 @@ DB_NAME = 'streamingbotdb'
 
 class StreamingBot:
     """ Streamingbot yay! """
-    def __init__(self, twitch_client_id: str, slack_webhook_url: str) -> None:
-        self.tw = twitch.Helix(twitch_client_id)   # Twitch session
+    TWITCH_AUTH_BASEURL = 'https://id.twitch.tv'
+
+    def __init__(self,
+        twitch_client_id: str,
+        twitch_client_secret: str,
+        slack_webhook_url: str
+    ) -> None:
+        self.tw = twitch.Helix(                    # Twitch session
+            twitch_client_id,
+            twitch_client_secret,
+            bearer_token=self._get_token(
+                twitch_client_id,
+                twitch_client_secret,
+            )
+        )
         self.sl = SlackHandler(slack_webhook_url)  # Slack session
         self.db = DynamoDBHandler(DB_NAME)         # DynamoDB session
         self.users: List[User] = []                # Twitch users to watch
         self.streams: List[Stream] = []            # List of current streams
         self.saved: List[dict] = []                # Saved items in the DB
+
+    @staticmethod
+    def _get_token(client_id, client_secret) -> str:
+        """ Get the app access OAuth token """
+        try:
+            resp = requests.post(
+                f"{StreamingBot.TWITCH_AUTH_BASEURL}/oauth2/token",
+                params={
+                    'client_id': client_id,
+                    'client_secret': client_secret,
+                    'grant_type': 'client_credentials',
+                }
+            )
+            resp.raise_for_status()
+        except requests.exceptions.RequestException as e:
+             raise StreamingBotException(f"Error getting token: {e}")
+
+        return resp.json().get('access_token')
 
     def set_users_to_watch(self, users: List[User]) -> None:
         """ Populate self.users """
