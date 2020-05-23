@@ -25,6 +25,7 @@ To run the function locally, first set these environment variables:
 
 ```
 TWITCH_CLIENT_ID
+TWITCH_CLIENT_SECRET
 SLACK_WEBHOOK_URL
 TWITCH_USER
 ```

@@ -7,6 +7,11 @@ variable "twitch_client_id" {
   description = "Twitch client ID to use - set in a .tfvars file"
 }
 
+variable "twitch_client_secret" {
+  type        = string
+  description = "Twitch client secret - set in a .tfvars file"
+}
+
 variable "slack_webhook_url" {
   type        = string
   description = "Slack webhook URL - set in a .tfvars file"

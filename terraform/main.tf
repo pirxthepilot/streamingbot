@@ -31,9 +31,10 @@ module "streamingbot_lambda" {
   timeout  = 30
 
   envvars = {
-    TWITCH_CLIENT_ID  = var.twitch_client_id
-    SLACK_WEBHOOK_URL = var.slack_webhook_url
-    TWITCH_USER       = var.twitch_user
+    TWITCH_CLIENT_ID     = var.twitch_client_id
+    TWITCH_CLIENT_SECRET = var.twitch_client_secret
+    SLACK_WEBHOOK_URL    = var.slack_webhook_url
+    TWITCH_USER          = var.twitch_user
   }
 
   custom_role_policy = <<POLICY

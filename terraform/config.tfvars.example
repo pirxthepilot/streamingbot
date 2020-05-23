@@ -1,6 +1,7 @@
 # Config params - DO NOT COMMIT TO GIT!
 
-twitch_client_id  = "foo"
-slack_webhook_url = "bar"
-twitch_user       = "baz"
-run_frequency     = 4
+twitch_client_id     = "foo"
+twitch_client_secret = "bar"
+slack_webhook_url    = "baz"
+twitch_user          = "vista"
+run_frequency        = 4
