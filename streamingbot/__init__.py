@@ -1,1 +1,4 @@
-from streamingbot.main import StreamingBot
+"""
+Streamingbot init
+"""
+from streamingbot.main import StreamingBot, create_streamingbot

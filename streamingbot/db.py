@@ -4,6 +4,7 @@ DynamoDB handler
 from typing import Any, Optional
 
 import simplejson as json
+
 from boto3 import resource
 from boto3.dynamodb.conditions import Key  #pylint: disable=unused-import
 
@@ -36,4 +37,3 @@ class DynamoDBHandler:
         """ Return all rows in the table """
         resp = self.table.scan()
         return json.loads(json.dumps(resp.get('Items')))
-

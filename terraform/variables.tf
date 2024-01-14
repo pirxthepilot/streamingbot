@@ -17,9 +17,9 @@ variable "slack_webhook_url" {
   description = "Slack webhook URL - set in a .tfvars file"
 }
 
-variable "twitch_user" {
+variable "twitch_users" {
   type        = string
-  description = "Twitch user to watch - set in a .tfvars file"
+  description = "Twitch users to watch - set in a .tfvars file"
 }
 
 variable "lambda_package" {

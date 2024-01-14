@@ -1,8 +1,8 @@
 PROJECT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
-export PKGTMP_DIR 			:= $(PROJECT_DIR)/pkgtmp
+export PKGTMP_DIR 		:= $(PROJECT_DIR)/pkgtmp
 export LAMBDA_FUNC_FILE := $(PROJECT_DIR)/bot.py
-export ZIP_FILE 				:= $(PROJECT_DIR)/package.zip
+export ZIP_FILE 		:= $(PROJECT_DIR)/package.zip
 
 
 .PHONY: typecheck
