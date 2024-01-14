@@ -1,7 +1,7 @@
 """
 Main routine
 """
-from typing import Dict, Iterator, List
+from typing import AsyncGenerator, Dict, List
 
 from botocore.exceptions import ClientError
 from twitchAPI.twitch import Stream, Twitch, TwitchUser
@@ -27,12 +27,12 @@ class StreamingBot:
     async def _init_twitch_client(self, twitch_client_id, twitch_client_secret):
         self.tw = await Twitch(twitch_client_id, twitch_client_secret)
 
-    async def get_streams(self) -> Iterator[Stream]:
+    async def get_streams(self) -> AsyncGenerator[Stream, None]:
         """ Get current live streams """
         async for stream in self.tw.get_streams(user_login=self.users):
             yield stream
 
-    async def get_users(self, users: List[str]) -> Iterator[TwitchUser]:
+    async def get_users(self, users: List[str]) -> AsyncGenerator[TwitchUser, None]:
         """ Get user detail """
         async for user in self.tw.get_users(logins=users):
             yield user
