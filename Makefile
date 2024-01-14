@@ -20,6 +20,11 @@ test-all: typecheck lint
 package:
 	@./support/package.sh
 
+.PHONY: tf-init
+tf-init:
+	cd terraform &&\
+	terraform init
+
 .PHONY: plan
 plan:
 	cd terraform &&\

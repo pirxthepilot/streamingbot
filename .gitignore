@@ -193,8 +193,9 @@ cython_debug/
 *.tfstate
 *.tfstate.*
 
-# Local .terraform directories
+# Local .terraform files and directories
 **/.terraform/*
+*.terraform.*
 
 
 # Ignore override files as they are usually used to override resources locally and so

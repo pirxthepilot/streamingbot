@@ -6,8 +6,9 @@ Twitch live stream notifier for Slack
 ## Requirements
 
 * AWS - this tool is designed to run in AWS and makes use of DynamoDB and Lambda
-* Python 3.7+
+* Python 3.10+
 * `terraform` for deployment
+* `awslogs` for checking cloudwatch logs
 
 
 ## Development

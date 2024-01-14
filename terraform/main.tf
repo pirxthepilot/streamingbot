@@ -1,5 +1,4 @@
 provider "aws" {
-  profile = "default"
   region  = var.region
 }
 
@@ -27,7 +26,7 @@ module "streamingbot_lambda" {
 
   filename = var.lambda_package
   handler  = "bot.lambda_handler"
-  runtime  = "python3.7"
+  runtime  = "python3.11"
   timeout  = 30
 
   envvars = {
