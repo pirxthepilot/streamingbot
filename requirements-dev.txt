@@ -1,0 +1,3 @@
+awslogs
+mypy
+pylint

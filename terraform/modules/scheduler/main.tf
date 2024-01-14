@@ -6,7 +6,7 @@ resource "aws_cloudwatch_event_rule" "lambda" {
   name_prefix         = "${var.name}-"
   schedule_expression = var.schedule_expression
   description         = var.description
-  is_enabled          = var.is_enabled
+  state               = var.is_enabled ? "ENABLED" : "DISABLED"
 }
 
 resource "aws_cloudwatch_event_target" "lambda" {

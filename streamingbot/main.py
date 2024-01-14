@@ -1,15 +1,12 @@
-from typing import List, Optional
+"""
+Main routine
+"""
+from typing import AsyncGenerator, Dict, List
 
 from botocore.exceptions import ClientError
-
-import requests
-import twitch
-from twitch.helix.models.user import User
-from twitch.helix.models.stream import Stream
-from twitch.helix import StreamNotFound
+from twitchAPI.twitch import Stream, Twitch, TwitchUser
 
 from streamingbot.db import DynamoDBHandler
-from streamingbot.exceptions import StreamingBotException
 from streamingbot.slack import SlackHandler
 
 
@@ -18,66 +15,33 @@ DB_NAME = 'streamingbotdb'
 
 class StreamingBot:
     """ Streamingbot yay! """
-    TWITCH_AUTH_BASEURL = 'https://id.twitch.tv'
-
     def __init__(self,
-        twitch_client_id: str,
-        twitch_client_secret: str,
         slack_webhook_url: str
     ) -> None:
-        self.tw = twitch.Helix(                    # Twitch session
-            twitch_client_id,
-            twitch_client_secret,
-            bearer_token=self._get_token(
-                twitch_client_id,
-                twitch_client_secret,
-            )
-        )
         self.sl = SlackHandler(slack_webhook_url)  # Slack session
         self.db = DynamoDBHandler(DB_NAME)         # DynamoDB session
-        self.users: List[User] = []                # Twitch users to watch
+        self.users: List[str] = []                 # Twitch users to monitor for status
         self.streams: List[Stream] = []            # List of current streams
         self.saved: List[dict] = []                # Saved items in the DB
 
-    @staticmethod
-    def _get_token(client_id, client_secret) -> str:
-        """ Get the app access OAuth token """
-        try:
-            resp = requests.post(
-                f"{StreamingBot.TWITCH_AUTH_BASEURL}/oauth2/token",
-                params={
-                    'client_id': client_id,
-                    'client_secret': client_secret,
-                    'grant_type': 'client_credentials',
-                }
-            )
-            resp.raise_for_status()
-        except requests.exceptions.RequestException as e:
-             raise StreamingBotException(f"Error getting token: {e}")
+    async def _init_twitch_client(self, twitch_client_id, twitch_client_secret):
+        self.tw = await Twitch(twitch_client_id, twitch_client_secret)
 
-        return resp.json().get('access_token')
+    async def get_streams(self) -> AsyncGenerator[Stream, None]:
+        """ Get current live streams """
+        async for stream in self.tw.get_streams(user_login=self.users):
+            yield stream
 
-    def set_users_to_watch(self, users: List[User]) -> None:
-        """ Populate self.users """
-        self.users = users
+    async def get_users(self, users: List[str]) -> AsyncGenerator[TwitchUser, None]:
+        """ Get user detail """
+        async for user in self.tw.get_users(logins=users):
+            yield user
 
-    def get_users(self, user_logins: List[str]) -> Optional[List[User]]:
-        """ Get a list of User instances based on login name """
-        users = []
-        for login in user_logins:
-            user = self.tw.user(login)
-            if user is not None:
-                users.append(user)
-        return users
+    def add_users_to_watch(self, users: List[str]) -> None:
+        """ Add to self.users """
+        self.users += users
 
-    def get_user_follows(self, user_login: str) -> Optional[List[User]]:
-        """ Given a login name, return a list of users it follows """
-        users = []
-        for user in self.tw.user(user_login).following().users:
-            users.append(user)
-        return users
-
-    def run(self):
+    async def run(self):
         """ Main routine """
         if not self.users:
             print('No users in my list! Exiting.')
@@ -88,45 +52,54 @@ class StreamingBot:
         # Get a snapshot of items in DB before we begin
         self.saved = self.db.scan()
 
-        # Begin!
-        for user in self.users:
-            try:
-                stream = user.stream
-                self.streams.append(stream)
-                print(f"[{user.login}] is live!")
-            except StreamNotFound:
-                print(f"[{user.login}] is not streaming")
-                continue
+        # Container for stream IDs already in the DB
+        db_saved_streams = set()
 
-            # Process the streamer
+        # Begin!
+        async for stream in self.get_streams():
+            self.streams.append(stream)
+            print(f"[{stream.user_login}] is live!")
+
+            # Process the stream
             try:
                 # First check if stream is already in DB
                 if self._exists_in_db(stream.id):
                     print(
-                        f"I am already aware of {user.login}'s stream "
+                        f"I am already aware of {stream.user_login}'s stream "
                         f"(ID: {stream.id}) - skipping Slack messaging"
                     )
+                    db_saved_streams.add(stream.id)
                     continue
 
                 # Save to DB
-                print(f"{user.login}'s stream (ID: {stream.id}) is new!")
-                self._save_to_db(user, stream)
+                print(f"{stream.user_login}'s stream (ID: {stream.id}) is new!")
+                self._save_to_db(stream)
                 print(f"Stream {stream.id} saved to DB")
 
-                # Send to Slack
-                resp = self.sl.send_message(user, stream)
-                print(
-                    f"Sent message to Slack for {user.login} with result: "
-                    f"{resp.status_code} {resp.text}"
-                )
             except ClientError as e:
                 print(f"DYNAMODB ERROR: {e}")
                 continue
 
-        # DB cleanup (TBD)
+        # Send to Slack
+
+        # First get user data in bulk for info not found in stream (e.g. profile image URL)
+        streams_to_process = [s for s in self.streams if s.id not in db_saved_streams]
+        user_data: Dict[str, TwitchUser] = {}
+        if streams_to_process:
+            async for user in self.get_users([s.user_login for s in streams_to_process]):
+                user_data[user.login] = user
+
+        # Now send the messages
+        for stream in streams_to_process:
+            resp = self.sl.send_message(stream, user_data[stream.user_login])
+            print(
+                f"Sent message to Slack for {stream.user_login} with result: "
+                f"{resp.status_code} {resp.text}"
+            )
+
+        # DB cleanup
         print('Cleaning up DB items where applicable...')
         for stream in self.saved:
-            #print(f"Is {stream['stream_id']} in {[i.id for i in self.streams]}")
             if not self._exists_in_streams(stream['stream_id']):
                 print(f"{stream['user_login']} no longer streams "
                       f"{stream['stream_id']}")
@@ -146,15 +119,25 @@ class StreamingBot:
         """ Check if stream exists in current streams """
         return int(stream_id) in [int(stream.id) for stream in self.streams]
 
-    def _save_to_db(self, user: User, stream: Stream) -> None:
+    def _save_to_db(self, stream: Stream) -> None:
         """ Save stream to DB """
         self.db.put_item(**{
             'stream_id': int(stream.id),
-            'user_login': user.login,
-            'started_at': stream.started_at,
+            'user_login': stream.user_login,
+            'started_at': str(stream.started_at),
         })
 
     def _remove_from_db(self, stream_id: int) -> None:
         """ Remove stream from DB """
         self.db.delete_item('stream_id', int(stream_id))
 
+
+async def create_streamingbot(
+        twitch_client_id: str,
+        twitch_client_secret: str,
+        slack_webhook_url: str
+) -> StreamingBot:
+    """ Create the Streamingbot instance """
+    sb = StreamingBot(slack_webhook_url)
+    await sb._init_twitch_client(twitch_client_id, twitch_client_secret)
+    return sb

@@ -1,9 +1,11 @@
+"""
+Slack message handler
+"""
 import json
 import arrow
 import requests
 from requests.models import Response
-from twitch.helix.models.user import User
-from twitch.helix.models.stream import Stream
+from twitchAPI.twitch import Stream, TwitchUser
 
 
 class SlackHandler:
@@ -12,18 +14,22 @@ class SlackHandler:
         self.webhook_url = webhook_url
         self.session = requests.Session()
 
-    def send_message(self, user: User, stream: Stream) -> Response:
+    @staticmethod
+    def _gen_thumbnail_url(url: str, width: int, height: int) -> str:
+        """ Generate thumbnail URL with desired resolution """
+        return url.replace("{width}", str(width)).replace("{height}", str(height))
+
+    def send_message(self, stream: Stream, user: TwitchUser) -> Response:
         """ Post to Slack """
         headers = {'Content-Type': 'application/json'}
 
         time_ago = arrow.get(stream.started_at).humanize()
 
-        title = f"*{user.login}* started a live stream {time_ago}!"
+        title = f"*{stream.user_login}* started a live stream {time_ago}!"
         text = (
-            f"*<https://twitch.tv/{user.login}|{user.display_name} - Twitch>*\n"
+            f"*<https://twitch.tv/{stream.user_login}|{stream.user_name} - Twitch>*\n"
             f"{stream.title}"
         )
-        # stream_thumbnail_url = stream.thumbnail_url.format(width=800, height=450)
 
         msg = {
             "blocks": [
@@ -38,6 +44,14 @@ class SlackHandler:
                     "type": "divider"
                 },
                 {
+                    "type": "image",
+                    "image_url": self._gen_thumbnail_url(stream.thumbnail_url, 640, 360),
+                    "alt_text": stream.title
+                },
+                {
+                    "type": "divider"
+                },
+                {
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
@@ -46,22 +60,9 @@ class SlackHandler:
                     "accessory": {
                         "type": "image",
                         "image_url": user.profile_image_url,
-                        "alt_text": user.login
+                        "alt_text": stream.user_login
                     }
                 },
-                # {
-                #     "type": "divider"
-                # },
-                # {
-                #     "type": "image",
-                #     "title": {
-                #         "type": "plain_text",
-                #         "text": "Screenshot",
-                #         "emoji": True
-                #     },
-                #     "image_url": stream_thumbnail_url,
-                #     "alt_text": stream.title
-                # },
                 {
                     "type": "divider"
                 }
@@ -73,4 +74,3 @@ class SlackHandler:
             headers=headers,
             data=json.dumps(msg)
         )
-

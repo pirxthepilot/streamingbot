@@ -1,5 +1,4 @@
 provider "aws" {
-  profile = "default"
   region  = var.region
 }
 
@@ -27,14 +26,14 @@ module "streamingbot_lambda" {
 
   filename = var.lambda_package
   handler  = "bot.lambda_handler"
-  runtime  = "python3.7"
+  runtime  = "python3.11"
   timeout  = 30
 
   envvars = {
     TWITCH_CLIENT_ID     = var.twitch_client_id
     TWITCH_CLIENT_SECRET = var.twitch_client_secret
     SLACK_WEBHOOK_URL    = var.slack_webhook_url
-    TWITCH_USER          = var.twitch_user
+    TWITCH_USERS         = var.twitch_users
   }
 
   custom_role_policy = <<POLICY
