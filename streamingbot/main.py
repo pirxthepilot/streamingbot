@@ -21,15 +21,15 @@ class StreamingBot:
         self.sl = SlackHandler(slack_webhook_url)  # Slack session
         self.db = DynamoDBHandler(DB_NAME)         # DynamoDB session
         self.users: List[str] = []                 # Twitch users to monitor for status
-        self.streams: List[Stream] = []            # List of current streams
-        self.saved: List[dict] = []                # Saved items in the DB
+        self.streams: Dict[str, Stream] = {}       # Current streams
+        self.saved: Dict[str, dict] = {}           # Saved items in the DB
 
     async def _init_twitch_client(self, twitch_client_id, twitch_client_secret):
         self.tw = await Twitch(twitch_client_id, twitch_client_secret)
 
     async def get_streams(self) -> AsyncGenerator[Stream, None]:
         """ Get current live streams """
-        async for stream in self.tw.get_streams(user_login=self.users):
+        async for stream in self.tw.get_streams(user_login=self.users, first=100):
             yield stream
 
     async def get_users(self, users: List[str]) -> AsyncGenerator[TwitchUser, None]:
@@ -50,25 +50,21 @@ class StreamingBot:
         print(f"{len(self.users)} users in my list")
 
         # Get a snapshot of items in DB before we begin
-        self.saved = self.db.scan()
-
-        # Container for stream IDs already in the DB
-        db_saved_streams = set()
+        self._get_db_snapshot()
 
         # Begin!
         async for stream in self.get_streams():
-            self.streams.append(stream)
+            self.streams[stream.id] = stream
             print(f"[{stream.user_login}] is live!")
 
             # Process the stream
             try:
                 # First check if stream is already in DB
-                if self._exists_in_db(stream.id):
+                if stream.id in self.saved:
                     print(
                         f"I am already aware of {stream.user_login}'s stream "
                         f"(ID: {stream.id}) - skipping Slack messaging"
                     )
-                    db_saved_streams.add(stream.id)
                     continue
 
                 # Save to DB
@@ -83,7 +79,7 @@ class StreamingBot:
         # Send to Slack
 
         # First get user data in bulk for info not found in stream (e.g. profile image URL)
-        streams_to_process = [s for s in self.streams if s.id not in db_saved_streams]
+        streams_to_process = [s for s in self.streams.values() if s.id not in self.saved]
         user_data: Dict[str, TwitchUser] = {}
         if streams_to_process:
             async for user in self.get_users([s.user_login for s in streams_to_process]):
@@ -99,37 +95,34 @@ class StreamingBot:
 
         # DB cleanup
         print('Cleaning up DB items where applicable...')
-        for stream in self.saved:
-            if not self._exists_in_streams(stream['stream_id']):
+        for stream_id, stream in self.saved.items():
+            if stream_id not in self.streams:
                 print(f"{stream['user_login']} no longer streams "
-                      f"{stream['stream_id']}")
+                      f"{stream_id}")
                 try:
-                    self._remove_from_db(stream['stream_id'])
-                    print(f"Stream {stream['stream_id']} removed from DB")
+                    self._remove_from_db(stream_id)
+                    print(f"Stream {stream_id} removed from DB")
                 except ClientError as e:
                     print(f"DynamoDB error removing from DB: {e}")
                     continue
         print('All done!')
 
-    def _exists_in_db(self, stream_id: int) -> bool:
-        """ Check if stream exists in DB """
-        return int(stream_id) in [item['stream_id'] for item in self.saved]
-
-    def _exists_in_streams(self, stream_id: int) -> bool:
-        """ Check if stream exists in current streams """
-        return int(stream_id) in [int(stream.id) for stream in self.streams]
+    def _get_db_snapshot(self) -> None:
+        """ Load DB content into self.saved """
+        for row in self.db.scan():
+            self.saved[row["stream_id"]] = row
 
     def _save_to_db(self, stream: Stream) -> None:
         """ Save stream to DB """
         self.db.put_item(**{
-            'stream_id': int(stream.id),
+            'stream_id': stream.id,
             'user_login': stream.user_login,
             'started_at': str(stream.started_at),
         })
 
-    def _remove_from_db(self, stream_id: int) -> None:
+    def _remove_from_db(self, stream_id: str) -> None:
         """ Remove stream from DB """
-        self.db.delete_item('stream_id', int(stream_id))
+        self.db.delete_item("stream_id", stream_id)
 
 
 async def create_streamingbot(
