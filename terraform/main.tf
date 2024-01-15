@@ -11,7 +11,7 @@ resource "aws_dynamodb_table" "streamingbot" {
 
   attribute {
     name = "stream_id"
-    type = "N"
+    type = "S"
   }
 
   tags = {

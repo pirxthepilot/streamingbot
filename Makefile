@@ -35,6 +35,11 @@ deploy:
 	cd terraform &&\
 	terraform apply -var-file=config.tfvars -var 'lambda_package=$(ZIP_FILE)' -auto-approve
 
+.PHONY: destroy-for-sure
+destroy-for-sure:
+	cd terraform &&\
+	terraform destroy -var-file=config.tfvars -var 'lambda_package=$(ZIP_FILE)'
+
 .PHONY: logtail
 logtail:
 	awslogs get /aws/lambda/streamingbot --timestamp --watch

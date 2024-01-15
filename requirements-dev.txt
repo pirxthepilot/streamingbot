@@ -1,3 +1,5 @@
 awslogs
 mypy
 pylint
+types-requests
+types-simplejson
